@@ -2,6 +2,7 @@
   <div class="pagina">
     <form @submit.prevent="registrarVeiculo">
       <div class="block-form">
+        <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
         <h1>CADASTRO DE VEÍCULOS</h1>
 
         <div class="campo">
@@ -106,6 +107,13 @@ export default {
       if (!this.placa) {
         this.erros.placa = 'Insira a placa do veículo.'
         valido = false
+      } else {
+        const contexto = localStorage.getItem('veiculos')
+        const veiculos = contexto ? JSON.parse(contexto) : []
+        if (veiculos.some(v => v.placa === this.placa)) {
+          this.erros.placa = 'Já existe um veículo cadastrado com esta placa.'
+          valido = false
+        }
       }
 
       if (!this.modelo) {
@@ -231,6 +239,19 @@ button:active{
 .mensagem-erro {
   color: rgb(255, 0, 0);
   font-size:15px;
+}
+
+.link-voltar {
+  align-self: flex-start;
+  color: rgb(9, 121, 9);
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.link-voltar:hover {
+  text-decoration: underline;
+  color: rgb(6, 91, 6);
 }
 </style>
 

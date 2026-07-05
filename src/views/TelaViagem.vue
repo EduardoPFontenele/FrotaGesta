@@ -2,6 +2,7 @@
   <div class="pagina">
     <form @submit.prevent="registrarViagem" novalidate>
       <div class="block-form">
+        <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
 
         <h1>ABRIR VIAGEM</h1>
 
@@ -370,5 +371,17 @@ button:active {
 
 .input-erro {
   border: 1px solid red;
+}
+
+.link-voltar {
+  align-self: flex-start;
+  color: rgb(9, 121, 9);
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.link-voltar:hover {
+  text-decoration: underline;
 }
 </style>
