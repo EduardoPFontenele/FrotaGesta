@@ -5,6 +5,8 @@ import TelaCadastroMotorista from '../views/TelaCadastroMotorista.vue'
 import TelaListagemMotorista from '../views/TelaListagemMotorista.vue'
 import TelaListagemVeiculo   from '../views/TelaListagemVeiculo.vue'
 import TelaViagem            from '../views/TelaViagem.vue'
+import TelaConcluirViagem    from '../views/TelaConcluirViagem.vue'
+import TelaQualidadeVeiculo  from '../views/TelaQualidadeVeiculo.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,6 +17,8 @@ const router = createRouter({
     { path: '/motoristas',         component: TelaListagemMotorista },
     { path: '/veiculos',           component: TelaListagemVeiculo   },
     { path: '/viagem',             component: TelaViagem            },
+    { path: '/concluir-viagem',    component: TelaConcluirViagem    },
+    { path: '/qualidade-veiculo',  component: TelaQualidadeVeiculo  },
   ],
 })
 

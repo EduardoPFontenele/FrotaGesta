@@ -1,7 +1,7 @@
 <template>
   <div class="pagina">
     <div class="block-lista">
-      <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
+      <RouterLink to="/" class="link-voltar">Voltar ao Menu</RouterLink>
 
       <h1>LISTAGEM DE MOTORISTAS</h1>
 
@@ -38,6 +38,8 @@
 </template>
 
 <script>
+import { getMotoristas } from '../services/dados'
+
 export default {
   data() {
     return {
@@ -47,8 +49,7 @@ export default {
   },
 
   created() {
-    const contexto = localStorage.getItem('motoristas')
-    this.motoristas = contexto ? JSON.parse(contexto) : []
+    this.motoristas = getMotoristas()
   },
 
   computed: {

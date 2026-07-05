@@ -2,7 +2,7 @@
   <div class="pagina">
     <form @submit.prevent="registrarMotorista">
       <div class="block-form">
-        <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
+        <RouterLink to="/" class="link-voltar">Voltar ao Menu</RouterLink>
 
         <h1>CADASTRO DE MOTORISTA</h1>
         <div class="campo">
@@ -52,6 +52,8 @@
 </template>
 
 <script>
+import { getMotoristas, salvarMotoristas } from '../services/dados'
+
 export default {
   data() {
     return {
@@ -103,12 +105,10 @@ export default {
           categoria_cnh:  categorias,
         }
 
-        const contexto = localStorage.getItem('motoristas')
-        const motoristas = contexto ? JSON.parse(contexto): []
-
+        const motoristas = getMotoristas()
         motoristas.push(motorista)
+        salvarMotoristas(motoristas)
 
-        localStorage.setItem('motoristas', JSON.stringify(motoristas, null, 2))
         alert(`Motorista ${this.nome} cadastrado com sucesso!`)
         this.nome = ''
         this.cpf = ''
@@ -145,8 +145,7 @@ export default {
           this.erros.cpf = 'Insira seu CPF.'
           valido = false
         } else {
-          const contexto = localStorage.getItem('motoristas')
-          const motoristas = contexto ? JSON.parse(contexto) : []
+          const motoristas = getMotoristas()
           if (motoristas.some(m => m.cpf === this.cpf)) {
             this.erros.cpf = 'Já existe um motorista cadastrado com este CPF.'
             valido = false

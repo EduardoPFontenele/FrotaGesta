@@ -2,7 +2,7 @@
   <div class="pagina">
     <form @submit.prevent="registrarViagem" novalidate>
       <div class="block-form">
-        <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
+        <RouterLink to="/" class="link-voltar">Voltar ao Menu</RouterLink>
 
         <h1>ABRIR VIAGEM</h1>
 
@@ -100,6 +100,8 @@
 </template>
 
 <script>
+import { getMotoristas, getVeiculos, getViagens, salvarViagens, getAlertas } from '../services/dados'
+
 export default {
   data() {
     return {
@@ -129,20 +131,18 @@ export default {
       return this.motoristas.filter(m => m.nome.toLowerCase().includes(termo))
     },
     sugestoesVeiculo() {
-      if (!this.buscaVeiculo.trim()) return this.veiculos
+      const disponiveis = this.veiculos.filter(v => this.veiculoDisponivel(v.placa))
+      if (!this.buscaVeiculo.trim()) return disponiveis
       const termo = this.buscaVeiculo.toLowerCase()
-      return this.veiculos.filter(v =>
+      return disponiveis.filter(v =>
         v.modelo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)
       )
     }
   },
 
   mounted() {
-    const contextoMotoristas = localStorage.getItem('motoristas')
-    this.motoristas = contextoMotoristas ? JSON.parse(contextoMotoristas) : []
-
-    const contextoVeiculos = localStorage.getItem('veiculos')
-    this.veiculos = contextoVeiculos ? JSON.parse(contextoVeiculos) : []
+    this.motoristas = getMotoristas()
+    this.veiculos = getVeiculos()
   },
 
   watch: {
@@ -177,6 +177,20 @@ export default {
       this.erros.veiculo = ''
     },
 
+    veiculoEmRota(placa) {
+      const viagens = getViagens()
+      return viagens.some(v => v.veiculo.placa === placa && !v.dataChegada)
+    },
+
+    veiculoEmManutencao(placa) {
+      const alertas = getAlertas()
+      return alertas.some(a => a.veiculoPlaca === placa && a.status === 'Pendente')
+    },
+
+    veiculoDisponivel(placa) {
+      return !this.veiculoEmRota(placa) && !this.veiculoEmManutencao(placa)
+    },
+
     validar() {
       this.erros = { motorista: '', veiculo: '', dataSaida: '', kmInicial: '' }
       let valido = true
@@ -188,6 +202,12 @@ export default {
 
       if (!this.veiculoSelecionado) {
         this.erros.veiculo = 'Selecione um veículo.'
+        valido = false
+      } else if (this.veiculoEmRota(this.veiculoSelecionado.placa)) {
+        this.erros.veiculo = 'Este veículo já está em rota.'
+        valido = false
+      } else if (this.veiculoEmManutencao(this.veiculoSelecionado.placa)) {
+        this.erros.veiculo = 'Este veículo está em manutenção urgente.'
         valido = false
       }
 
@@ -211,18 +231,19 @@ export default {
       if (!this.validar()) return
 
       const viagem = {
+        id: Date.now(),
         motorista: this.motoristaSelecionado,
         veiculo: this.veiculoSelecionado,
         dataSaida: this.dataSaida,
         kmInicial: Number(this.kmInicial),
         dataChegada: null,
         kmFinal: null,
+        status: 'Em rota',
       }
 
-      const contexto = localStorage.getItem('viagens')
-      const viagens = contexto ? JSON.parse(contexto) : []
+      const viagens = getViagens()
       viagens.push(viagem)
-      localStorage.setItem('viagens', JSON.stringify(viagens, null, 2))
+      salvarViagens(viagens)
 
       alert(`Viagem aberta para ${this.motoristaSelecionado.nome} com o veículo ${this.veiculoSelecionado.placa}!`)
 

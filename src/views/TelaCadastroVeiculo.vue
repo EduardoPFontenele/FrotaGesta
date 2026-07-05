@@ -2,7 +2,7 @@
   <div class="pagina">
     <form @submit.prevent="registrarVeiculo">
       <div class="block-form">
-        <RouterLink to="/" class="link-voltar">&larr; Voltar ao Menu</RouterLink>
+        <RouterLink to="/" class="link-voltar">Voltar ao Menu</RouterLink>
         <h1>CADASTRO DE VEÍCULOS</h1>
 
         <div class="campo">
@@ -55,6 +55,8 @@
 </template>
 
 <script>
+import { getVeiculos, salvarVeiculos } from '../services/dados'
+
 export default {
   data() {
     return {
@@ -108,8 +110,7 @@ export default {
         this.erros.placa = 'Insira a placa do veículo.'
         valido = false
       } else {
-        const contexto = localStorage.getItem('veiculos')
-        const veiculos = contexto ? JSON.parse(contexto) : []
+        const veiculos = getVeiculos()
         if (veiculos.some(v => v.placa === this.placa)) {
           this.erros.placa = 'Já existe um veículo cadastrado com esta placa.'
           valido = false
@@ -152,12 +153,10 @@ export default {
         km: this.km,
       }
 
-      const contexto = localStorage.getItem('veiculos')
-      const veiculos = contexto ? JSON.parse(contexto) : []
-
+      const veiculos = getVeiculos()
       veiculos.push(veiculo)
+      salvarVeiculos(veiculos)
 
-      localStorage.setItem('veiculos', JSON.stringify(veiculos, null, 2))
       alert(`Veículo ${this.placa} cadastrado com sucesso!`)
 
       this.placa = ''
