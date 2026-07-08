@@ -214,6 +214,10 @@ select {
   font-size: 18px;
 }
 
+option {
+  font-size: 18px;
+}
+
 .block-form {
   margin-top: 20%;
   display: flex;
