@@ -20,6 +20,7 @@
           <tr>
             <th>Placa</th>
             <th>Modelo</th>
+            <th>Tipo</th>
             <th>Ano</th>
             <th>Km atual</th>
           </tr>
@@ -28,6 +29,7 @@
           <tr v-for="veiculo in veiculosFiltrados" :key="veiculo.placa">
             <td>{{ veiculo.placa }}</td>
             <td>{{ veiculo.modelo }}</td>
+            <td>{{ veiculo.tipo }}</td>
             <td>{{ veiculo.ano }}</td>
             <td>{{ veiculo.km }}</td>
           </tr>

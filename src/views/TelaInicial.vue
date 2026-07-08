@@ -44,6 +44,7 @@
               <tr>
                 <th>Placa</th>
                 <th>Modelo</th>
+                <th>Tipo</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -51,6 +52,7 @@
               <tr v-for="veiculo in veiculosComStatus" :key="veiculo.placa">
                 <td>{{ veiculo.placa }}</td>
                 <td>{{ veiculo.modelo }}</td>
+                <td>{{ veiculo.tipo }}</td>
                 <td>
                   <span class="badge-status" :class="classeStatus(veiculo.status)">{{ veiculo.status }}</span>
                 </td>

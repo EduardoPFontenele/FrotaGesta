@@ -28,6 +28,15 @@
         <span class="mensagem-erro" v-if="erros.modelo">{{ erros.modelo }}</span>
 
         <div class="campo">
+          <label>Tipo do Veículo</label>
+        </div>
+        <select v-model="tipo" :class="{'input-erro': erros.tipo}">
+          <option value="" disabled>Selecione o tipo</option>
+          <option v-for="opcao in tiposVeiculo" :key="opcao" :value="opcao">{{ opcao }}</option>
+        </select>
+        <span class="mensagem-erro" v-if="erros.tipo">{{ erros.tipo }}</span>
+
+        <div class="campo">
           <label>Ano</label>
         </div>
         <input
@@ -62,11 +71,14 @@ export default {
     return {
       placa: '',
       modelo: '',
+      tipo: '',
       ano: '',
       km: '',
+      tiposVeiculo: ['Carro', 'Van', 'Caminhão'],
       erros: {
         placa: '',
         modelo: '',
+        tipo: '',
         ano: '',
         km: '',
       }
@@ -103,7 +115,7 @@ export default {
       return letras
     },
     validar() {
-      this.erros = { placa: '', modelo: '', ano: '', km: '' }
+      this.erros = { placa: '', modelo: '', tipo: '', ano: '', km: '' }
       let valido = true
 
       if (!this.placa) {
@@ -119,6 +131,11 @@ export default {
 
       if (!this.modelo) {
         this.erros.modelo = 'Insira o modelo do veículo.'
+        valido = false
+      }
+
+      if (!this.tipo) {
+        this.erros.tipo = 'Selecione o tipo do veículo.'
         valido = false
       }
 
@@ -149,6 +166,7 @@ export default {
       const veiculo = {
         placa: this.placa,
         modelo: this.modelo,
+        tipo: this.tipo,
         ano: this.ano,
         km: this.km,
       }
@@ -161,6 +179,7 @@ export default {
 
       this.placa = ''
       this.modelo = ''
+      this.tipo = ''
       this.ano = ''
       this.km = ''
     },
@@ -188,7 +207,8 @@ h1 {
   align-items: center;
 }
 
-input {
+input,
+select {
   width: 100%;
   height: 30px;
   font-size: 18px;
