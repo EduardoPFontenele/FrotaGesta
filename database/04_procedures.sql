@@ -1,6 +1,7 @@
 CREATE OR REPLACE PROCEDURE encerrar_viagem(
-    p_id_viagem INT,
-    p_km_final  INT
+IN    p_id_viagem         INT,
+IN    p_km_final          INT,
+IN    p_data_hora_chegada TIMESTAMP DEFAULT NULL
 )
 LANGUAGE plpgsql
 AS $$
@@ -30,10 +31,11 @@ BEGIN
     END IF;
 
     -- atualiza a viagem: status, km final e data de chegada
+    -- (usa a data informada; se vier NULL, cai no momento atual)
     UPDATE viagem
     SET status = 'CONCLUIDA',
         km_final = p_km_final,
-        data_hora_chegada = CURRENT_TIMESTAMP
+        data_hora_chegada = COALESCE(p_data_hora_chegada, CURRENT_TIMESTAMP)
     WHERE id_viagem = p_id_viagem;
 
     -- atualiza o odometro do veiculo

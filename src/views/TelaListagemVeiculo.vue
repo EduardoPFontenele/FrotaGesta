@@ -52,8 +52,12 @@ export default {
     }
   },
 
-  created() {
-    this.veiculos = getVeiculos()
+  async created() {
+    try {
+      this.veiculos = await getVeiculos()
+    } catch (e) {
+      alert(`Erro ao carregar veículos: ${e.message}`)
+    }
   },
 
   computed: {

@@ -106,21 +106,23 @@ export default {
   },
 
   methods: {
-    carregarDados() {
-      this.veiculos = getVeiculos()
-      this.viagens = getViagens()
-      this.alertas = getAlertas()
+    async carregarDados() {
+      try {
+        const [veiculos, viagens, alertas] = await Promise.all([
+          getVeiculos(),
+          getViagens(),
+          getAlertas(),
+        ])
+        this.veiculos = veiculos
+        this.viagens = viagens
+        this.alertas = alertas
+      } catch (e) {
+        alert(`Erro ao carregar dados: ${e.message}`)
+      }
     },
 
     confirmarLimpezaDados() {
-      const confirmado = confirm(
-        'Isso vai apagar todos os veículos, motoristas, viagens e alertas cadastrados. Deseja continuar?'
-      )
-      if (!confirmado) return
-
-      limparTodosOsDados()
-      this.carregarDados()
-      alert('Todos os dados foram removidos.')
+      alert('No modo conectado ao banco, o reset de dados é feito pelos scripts SQL (database/00_reset.sql).')
     },
 
     statusVeiculo(placa) {

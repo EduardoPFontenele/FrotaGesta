@@ -52,7 +52,7 @@
 </template>
 
 <script>
-import { getMotoristas, salvarMotoristas } from '../services/dados'
+import { salvarMotoristas } from '../services/dados'
 
 export default {
   data() {
@@ -87,7 +87,7 @@ export default {
   },
 
   methods: {
-      registrarMotorista() {
+      async registrarMotorista() {
 
         if(!this.validar()) {
           return
@@ -99,15 +99,16 @@ export default {
         .map(cat => cat.trim().toUpperCase())
         .filter(cat => cat !== '')  // remove entradas vazias
 
-        const motorista = {
-          cpf: this.cpf,
-          nome: this.nome,
-          categoria_cnh:  categorias,
+        try {
+          await salvarMotoristas({
+            cpf: this.cpf,
+            nome: this.nome,
+            categoria_cnh: categorias,
+          })
+        } catch (e) {
+          this.erros.cpf = e.message
+          return
         }
-
-        const motoristas = getMotoristas()
-        motoristas.push(motorista)
-        salvarMotoristas(motoristas)
 
         alert(`Motorista ${this.nome} cadastrado com sucesso!`)
         this.nome = ''
@@ -144,12 +145,6 @@ export default {
         if (!this.cpf) {
           this.erros.cpf = 'Insira seu CPF.'
           valido = false
-        } else {
-          const motoristas = getMotoristas()
-          if (motoristas.some(m => m.cpf === this.cpf)) {
-            this.erros.cpf = 'Já existe um motorista cadastrado com este CPF.'
-            valido = false
-          }
         }
 
         if (!this.nome) {

@@ -77,9 +77,7 @@
 </template>
 
 <script>
-import { getViagens, salvarViagens, getVeiculos, salvarVeiculos, getAlertas, salvarAlertas } from '../services/dados'
-
-const LIMITE_MANUTENCAO_KM = 10000
+import { getViagens, encerrarViagem } from '../services/dados'
 
 export default {
   data() {
@@ -108,8 +106,8 @@ export default {
     }
   },
 
-  mounted() {
-    this.carregarViagensAbertas()
+  async mounted() {
+    await this.carregarViagensAbertas()
   },
 
   watch: {
@@ -122,8 +120,13 @@ export default {
   },
 
   methods: {
-    carregarViagensAbertas() {
-      this.viagensAbertas = getViagens().filter(v => !v.dataChegada)
+    async carregarViagensAbertas() {
+      try {
+        const viagens = await getViagens()
+        this.viagensAbertas = viagens.filter(v => !v.dataChegada)
+      } catch (e) {
+        alert(`Erro ao carregar viagens: ${e.message}`)
+      }
     },
 
     formatarData(valor) {
@@ -171,61 +174,28 @@ export default {
       return valido
     },
 
-    // Encerramento da viagem: espelha a procedure descrita no documento
-    // (validação, atualização de status/km e verificação de manutenção).
-    concluirViagem() {
+    // Encerramento da viagem: uma única chamada à procedure encerrar_viagem,
+    // que valida, atualiza status/km/chegada e dispara a trigger de manutenção.
+    async concluirViagem() {
       if (!this.validar()) return
 
-      const kmFinalNumero = Number(this.kmFinal)
-      const viagem = this.viagemSelecionada
+      const placa = this.viagemSelecionada.veiculo.placa
 
-      // 1. Atualiza a viagem (status e quilometragem final)
-      const viagens = getViagens()
-      const viagemAtualizada = viagens.find(v =>
-        v.id ? v.id === viagem.id : (!v.dataChegada && v.veiculo.placa === viagem.veiculo.placa)
-      )
-      viagemAtualizada.dataChegada = this.dataChegada
-      viagemAtualizada.kmFinal = kmFinalNumero
-      viagemAtualizada.status = 'Concluída'
-      salvarViagens(viagens)
-
-      // 2. Atualiza o odômetro atual do veículo
-      const veiculos = getVeiculos()
-      const veiculoAtualizado = veiculos.find(v => v.placa === viagem.veiculo.placa)
-      veiculoAtualizado.km = kmFinalNumero
-      salvarVeiculos(veiculos)
-
-      // 3. Verifica se o veículo atingiu o limite de manutenção preventiva
-      const limiteAnterior = Math.floor(viagem.kmInicial / LIMITE_MANUTENCAO_KM)
-      const limiteAtual = Math.floor(kmFinalNumero / LIMITE_MANUTENCAO_KM)
-      let alertaGerado = false
-
-      if (limiteAtual > limiteAnterior) {
-        const alertas = getAlertas()
-        alertas.push({
-          id: Date.now(),
-          veiculoPlaca: veiculoAtualizado.placa,
-          veiculoModelo: veiculoAtualizado.modelo,
-          tipo: 'Troca de óleo',
-          kmLimite: limiteAtual * LIMITE_MANUTENCAO_KM,
-          kmAtual: kmFinalNumero,
-          data: new Date().toISOString(),
-          status: 'Pendente',
-        })
-        salvarAlertas(alertas)
-        alertaGerado = true
+      try {
+        await encerrarViagem(this.viagemSelecionada.id, this.kmFinal, this.dataChegada)
+      } catch (e) {
+        // erros da procedure (viagem já encerrada / km incoerente)
+        this.erros.kmFinal = e.message
+        return
       }
 
-      alert(
-        `Viagem concluída para o veículo ${veiculoAtualizado.placa}!` +
-        (alertaGerado ? '\nAlerta de manutenção urgente gerado (limite de quilometragem atingido).' : '')
-      )
+      alert(`Viagem concluída para o veículo ${placa}!`)
 
       this.buscaVeiculo = ''
       this.viagemSelecionada = null
       this.dataChegada = ''
       this.kmFinal = ''
-      this.carregarViagensAbertas()
+      await this.carregarViagensAbertas()
     },
   },
 }

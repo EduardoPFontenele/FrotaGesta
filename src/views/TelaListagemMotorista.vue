@@ -48,8 +48,12 @@ export default {
     }
   },
 
-  created() {
-    this.motoristas = getMotoristas()
+  async created() {
+    try {
+      this.motoristas = await getMotoristas()
+    } catch (e) {
+      alert(`Erro ao carregar motoristas: ${e.message}`)
+    }
   },
 
   computed: {

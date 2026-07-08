@@ -100,7 +100,7 @@
 </template>
 
 <script>
-import { getMotoristas, getVeiculos, getViagens, salvarViagens, getAlertas } from '../services/dados'
+import { getMotoristas, getVeiculos, getViagens, getAlertas, abrirViagem } from '../services/dados'
 
 export default {
   data() {
@@ -111,6 +111,8 @@ export default {
       motoristas: [],
       buscaVeiculo: '',
       veiculos: [],
+      viagens: [],
+      alertas: [],
       veiculoSelecionado: null,
       mostrarSugestoesVeiculo: false,
       dataSaida: '',
@@ -140,9 +142,21 @@ export default {
     }
   },
 
-  mounted() {
-    this.motoristas = getMotoristas()
-    this.veiculos = getVeiculos()
+  async mounted() {
+    try {
+      const [motoristas, veiculos, viagens, alertas] = await Promise.all([
+        getMotoristas(),
+        getVeiculos(),
+        getViagens(),
+        getAlertas(),
+      ])
+      this.motoristas = motoristas
+      this.veiculos = veiculos
+      this.viagens = viagens
+      this.alertas = alertas
+    } catch (e) {
+      alert(`Erro ao carregar dados: ${e.message}`)
+    }
   },
 
   watch: {
@@ -178,13 +192,11 @@ export default {
     },
 
     veiculoEmRota(placa) {
-      const viagens = getViagens()
-      return viagens.some(v => v.veiculo.placa === placa && !v.dataChegada)
+      return this.viagens.some(v => v.veiculo.placa === placa && !v.dataChegada)
     },
 
     veiculoEmManutencao(placa) {
-      const alertas = getAlertas()
-      return alertas.some(a => a.veiculoPlaca === placa && a.status === 'Pendente')
+      return this.alertas.some(a => a.veiculoPlaca === placa && a.status === 'Pendente')
     },
 
     veiculoDisponivel(placa) {
@@ -227,23 +239,21 @@ export default {
       return valido
     },
 
-    registrarViagem() {
+    async registrarViagem() {
       if (!this.validar()) return
 
-      const viagem = {
-        id: Date.now(),
-        motorista: this.motoristaSelecionado,
-        veiculo: this.veiculoSelecionado,
-        dataSaida: this.dataSaida,
-        kmInicial: Number(this.kmInicial),
-        dataChegada: null,
-        kmFinal: null,
-        status: 'Em rota',
+      try {
+        await abrirViagem({
+          id_motorista: this.motoristaSelecionado.id_motorista,
+          id_veiculo: this.veiculoSelecionado.id_veiculo,
+          km_inicial: this.kmInicial,
+          data_hora_saida: this.dataSaida,
+        })
+      } catch (e) {
+        // mensagem da trigger de CNH (ou outro erro do backend)
+        this.erros.veiculo = e.message
+        return
       }
-
-      const viagens = getViagens()
-      viagens.push(viagem)
-      salvarViagens(viagens)
 
       alert(`Viagem aberta para ${this.motoristaSelecionado.nome} com o veículo ${this.veiculoSelecionado.placa}!`)
 
@@ -253,6 +263,11 @@ export default {
       this.veiculoSelecionado = null
       this.dataSaida = ''
       this.kmInicial = ''
+
+      // recarrega viagens para atualizar a disponibilidade dos veículos
+      try {
+        this.viagens = await getViagens()
+      } catch (_) { /* mantém a lista atual */ }
     },
   },
 }

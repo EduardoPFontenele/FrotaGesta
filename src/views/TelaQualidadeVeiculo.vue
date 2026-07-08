@@ -102,7 +102,7 @@
 
           <div class="linha-acao">
             <select v-model="novoTipoProblema">
-              <option v-for="tipo in tiposProblema" :key="tipo" :value="tipo">{{ tipo }}</option>
+              <option v-for="tipo in tiposProblema" :key="tipo.id_tipo_manutencao" :value="tipo.id_tipo_manutencao">{{ tipo.descricao }}</option>
             </select>
             <button type="button" class="botao-secundario" @click="registrarProblema">Registrar problema</button>
           </div>
@@ -126,7 +126,16 @@
 </template>
 
 <script>
-import { getVeiculos, salvarVeiculos, getViagens, getAlertas, salvarAlertas, getAbastecimentos, salvarAbastecimentos } from '../services/dados'
+import {
+  getVeiculos,
+  getViagens,
+  getAlertas,
+  getAbastecimentos,
+  salvarAbastecimentos,
+  registrarAlerta,
+  resolverAlerta as resolverAlertaApi,
+  getTiposManutencao,
+} from '../services/dados'
 
 export default {
   name: 'TelaQualidadeVeiculo',
@@ -144,8 +153,8 @@ export default {
       valorTotalInput: '',
       kmAbastecimentoInput: '',
       dataHoraAbastecimentoInput: '',
-      novoTipoProblema: 'Troca de óleo',
-      tiposProblema: ['Troca de óleo', 'Pastilhas de freio', 'Revisão geral', 'Outro'],
+      novoTipoProblema: null,
+      tiposProblema: [], // carregado do banco (id_tipo_manutencao + descricao)
     }
   },
 
@@ -204,11 +213,26 @@ export default {
   },
 
   methods: {
-    carregarDados() {
-      this.veiculos = getVeiculos()
-      this.viagens = getViagens()
-      this.alertas = getAlertas()
-      this.abastecimentos = getAbastecimentos()
+    async carregarDados() {
+      try {
+        const [veiculos, viagens, alertas, abastecimentos, tipos] = await Promise.all([
+          getVeiculos(),
+          getViagens(),
+          getAlertas(),
+          getAbastecimentos(),
+          getTiposManutencao(),
+        ])
+        this.veiculos = veiculos
+        this.viagens = viagens
+        this.alertas = alertas
+        this.abastecimentos = abastecimentos
+        this.tiposProblema = tipos
+        if (this.novoTipoProblema === null && tipos.length) {
+          this.novoTipoProblema = tipos[0].id_tipo_manutencao
+        }
+      } catch (e) {
+        alert(`Erro ao carregar dados: ${e.message}`)
+      }
     },
 
     fecharSugestoes() {
@@ -236,7 +260,7 @@ export default {
       return new Date(valor).toLocaleString('pt-BR')
     },
 
-    registrarAbastecimento() {
+    async registrarAbastecimento() {
       const volume = Number(this.volumeInput)
       const valorTotal = Number(this.valorTotalInput)
       const km = Number(this.kmAbastecimentoInput)
@@ -261,60 +285,68 @@ export default {
         return
       }
 
-      const abastecimento = {
-        id: Date.now(),
-        veiculoPlaca: this.veiculoSelecionado.placa,
-        veiculoModelo: this.veiculoSelecionado.modelo,
-        volume,
-        valorTotal,
-        km,
-        dataHora: new Date(this.dataHoraAbastecimentoInput).toISOString(),
+      try {
+        await salvarAbastecimentos({
+          id_veiculo: this.veiculoSelecionado.id_veiculo,
+          litros: volume,
+          valor_total: valorTotal,
+          km_abastecimento: km,
+          data_hora: new Date(this.dataHoraAbastecimentoInput).toISOString(),
+        })
+      } catch (e) {
+        alert(`Erro ao registrar abastecimento: ${e.message}`)
+        return
       }
 
-      this.abastecimentos.push(abastecimento)
-      salvarAbastecimentos(this.abastecimentos)
-
-      if (km > (this.veiculoSelecionado.km ?? 0)) {
-        this.veiculoSelecionado.km = km
-        salvarVeiculos(this.veiculos)
-      }
-
+      const placa = this.veiculoSelecionado.placa
       this.volumeInput = ''
       this.valorTotalInput = ''
       this.kmAbastecimentoInput = ''
       this.dataHoraAbastecimentoInput = ''
 
-      alert(`Abastecimento de ${volume} L registrado para o veículo ${abastecimento.veiculoPlaca}.`)
+      await this.carregarDados()
+      alert(`Abastecimento de ${volume} L registrado para o veículo ${placa}.`)
     },
 
-    registrarProblema() {
-      const jaPendente = this.alertasVeiculo.some(a =>
-        a.tipo === this.novoTipoProblema && a.status === 'Pendente'
+    async registrarProblema() {
+      const tipoSelecionado = this.tiposProblema.find(
+        t => t.id_tipo_manutencao === this.novoTipoProblema
       )
-
-      if (jaPendente) {
-        alert(`Já existe um problema pendente do tipo "${this.novoTipoProblema}" para este veículo.`)
+      if (!tipoSelecionado) {
+        alert('Selecione um tipo de problema.')
         return
       }
 
-      const alerta = {
-        id: Date.now(),
-        veiculoPlaca: this.veiculoSelecionado.placa,
-        veiculoModelo: this.veiculoSelecionado.modelo,
-        tipo: this.novoTipoProblema,
-        kmAtual: this.veiculoSelecionado.km,
-        data: new Date().toISOString(),
-        status: 'Pendente',
+      const jaPendente = this.alertasVeiculo.some(a =>
+        a.tipo === tipoSelecionado.descricao && a.status === 'Pendente'
+      )
+      if (jaPendente) {
+        alert(`Já existe um problema pendente do tipo "${tipoSelecionado.descricao}" para este veículo.`)
+        return
       }
 
-      this.alertas.push(alerta)
-      salvarAlertas(this.alertas)
-      alert(`Problema "${alerta.tipo}" registrado para o veículo ${alerta.veiculoPlaca}.`)
+      try {
+        await registrarAlerta({
+          id_veiculo: this.veiculoSelecionado.id_veiculo,
+          id_tipo_manutencao: this.novoTipoProblema,
+        })
+      } catch (e) {
+        alert(`Erro ao registrar problema: ${e.message}`)
+        return
+      }
+
+      await this.carregarDados()
+      alert(`Problema "${tipoSelecionado.descricao}" registrado para o veículo ${this.veiculoSelecionado.placa}.`)
     },
 
-    resolverAlerta(alerta) {
-      this.alertas = this.alertas.filter(a => a.id !== alerta.id)
-      salvarAlertas(this.alertas)
+    async resolverAlerta(alerta) {
+      try {
+        await resolverAlertaApi(alerta.id)
+      } catch (e) {
+        alert(`Erro ao resolver o problema: ${e.message}`)
+        return
+      }
+      await this.carregarDados()
     },
 
     liberarVeiculo() {

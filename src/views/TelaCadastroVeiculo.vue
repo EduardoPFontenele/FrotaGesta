@@ -32,7 +32,7 @@
         </div>
         <select v-model="tipo" :class="{'input-erro': erros.tipo}">
           <option value="" disabled>Selecione o tipo</option>
-          <option v-for="opcao in tiposVeiculo" :key="opcao" :value="opcao">{{ opcao }}</option>
+          <option v-for="opcao in tiposVeiculo" :key="opcao.value" :value="opcao.value">{{ opcao.label }}</option>
         </select>
         <span class="mensagem-erro" v-if="erros.tipo">{{ erros.tipo }}</span>
 
@@ -64,7 +64,7 @@
 </template>
 
 <script>
-import { getVeiculos, salvarVeiculos } from '../services/dados'
+import { salvarVeiculos } from '../services/dados'
 
 export default {
   data() {
@@ -74,7 +74,11 @@ export default {
       tipo: '',
       ano: '',
       km: '',
-      tiposVeiculo: ['Carro', 'Van', 'Caminhão'],
+      tiposVeiculo: [
+        { value: 'CARRO', label: 'Carro' },
+        { value: 'VAN', label: 'Van' },
+        { value: 'CAMINHAO', label: 'Caminhão' },
+      ],
       erros: {
         placa: '',
         modelo: '',
@@ -121,12 +125,6 @@ export default {
       if (!this.placa) {
         this.erros.placa = 'Insira a placa do veículo.'
         valido = false
-      } else {
-        const veiculos = getVeiculos()
-        if (veiculos.some(v => v.placa === this.placa)) {
-          this.erros.placa = 'Já existe um veículo cadastrado com esta placa.'
-          valido = false
-        }
       }
 
       if (!this.modelo) {
@@ -160,20 +158,21 @@ export default {
       return valido
     },
 
-    registrarVeiculo() {
+    async registrarVeiculo() {
       if (!this.validar()) return
 
-      const veiculo = {
-        placa: this.placa,
-        modelo: this.modelo,
-        tipo: this.tipo,
-        ano: this.ano,
-        km: this.km,
+      try {
+        await salvarVeiculos({
+          placa: this.placa,
+          modelo: this.modelo,
+          tipo: this.tipo,
+          ano: this.ano,
+          km: this.km,
+        })
+      } catch (e) {
+        this.erros.placa = e.message
+        return
       }
-
-      const veiculos = getVeiculos()
-      veiculos.push(veiculo)
-      salvarVeiculos(veiculos)
 
       alert(`Veículo ${this.placa} cadastrado com sucesso!`)
 

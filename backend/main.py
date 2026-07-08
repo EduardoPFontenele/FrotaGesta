@@ -1,82 +1,55 @@
 # main.py
-# Ponto de entrada da API FastAPI do FrotaGesta.
-# Conecta ao banco (via db.py) e expoe os endpoints que o front consome.
+# Ponto de entrada da API FrotaGesta.
+# Configura o app, o CORS e o ciclo de vida do pool, e inclui os routers.
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import asyncpg
 
 import db
-import schemas
+from routers import (
+    motoristas,
+    veiculos,
+    viagens,
+    alertas,
+    abastecimentos,
+    dashboard,
+    tipos_manutencao,
+)
 
 
-# --- Ciclo de vida da aplicacao ---
-# Cria o pool de conexoes quando a API sobe e fecha quando ela desliga.
+# Ciclo de vida: cria o pool de conexoes no startup, fecha no shutdown.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.criar_pool()   # startup: abre o pool
-    yield                   # (aqui a aplicacao roda)
-    await db.fechar_pool()  # shutdown: fecha o pool
+    await db.criar_pool()
+    yield
+    await db.fechar_pool()
 
 
 app = FastAPI(title="FrotaGesta API", lifespan=lifespan)
 
 
-# --- CORS ---
-# Libera o front (Vue, em outra porta) a chamar esta API.
-# Sem isso, o navegador bloqueia as requisicoes por seguranca.
+# CORS: libera o front (Vue/Vite) a chamar esta API.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # endereco do front (Vite)
+    allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# --- Health check ---
-# Endpoint simples para confirmar que a API esta no ar E conectada ao banco.
+# Registra todos os routers.
+app.include_router(motoristas.router)
+app.include_router(veiculos.router)
+app.include_router(viagens.router)
+app.include_router(alertas.router)
+app.include_router(abastecimentos.router)
+app.include_router(dashboard.router)
+app.include_router(tipos_manutencao.router)
+
+
+# Health check: confirma que a API esta no ar e conectada ao banco.
 @app.get("/health")
 async def health(conexao=Depends(db.get_conexao)):
     resultado = await conexao.fetchval("SELECT 1")
     return {"status": "ok", "banco": resultado == 1}
-
-@app.post("/motoristas", response_model=schemas.MotoristaResponse, status_code=201)
-async def criar_motorista(
-    motorista: schemas.MotoristaCreate,
-    conexao=Depends(db.get_conexao),
-):
-    try:
-        linha = await conexao.fetchrow(
-            """
-            INSERT INTO motorista (cpf, nome, categoria_cnh)
-            VALUES ($1, $2, $3)
-            RETURNING id_motorista, cpf, nome, categoria_cnh
-            """,
-            motorista.cpf,
-            motorista.nome,
-            motorista.categoria_cnh,
-        )
-    except asyncpg.UniqueViolationError:
-        raise HTTPException(status_code=409, detail="CPF ja cadastrado")
-    except asyncpg.CheckViolationError:
-        raise HTTPException(status_code=422, detail="Categoria de CNH invalida")
-
-    return dict(linha)
-
-
-@app.get("/motoristas", response_model=list[schemas.MotoristaResponse])
-async def listar_motoristas(
-    busca: str = "",
-    conexao=Depends(db.get_conexao),
-):
-    linhas = await conexao.fetch(
-        """
-        SELECT id_motorista, cpf, nome, categoria_cnh
-        FROM motorista
-        WHERE cpf ILIKE $1 OR nome ILIKE $1
-        ORDER BY nome
-        """,
-        f"%{busca}%",
-    )
-    return [dict(linha) for linha in linhas]
