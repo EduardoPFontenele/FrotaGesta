@@ -42,18 +42,40 @@
         </div>
 
         <div class="secao">
-          <h3>Combustível</h3>
+          <h3>Abastecimento</h3>
 
-          <div class="gauge-wrapper">
-            <div class="gauge-fundo">
-              <div class="gauge-preenchido" :style="{ width: (veiculoSelecionado.combustivel ?? 100) + '%' }"></div>
-            </div>
-            <span class="gauge-valor">{{ veiculoSelecionado.combustivel ?? 100 }}%</span>
+          <ul class="lista-problemas" v-if="abastecimentosVeiculo.length">
+            <li v-for="abastecimento in abastecimentosVeiculo" :key="abastecimento.id" class="problema-item">
+              <div class="problema-info">
+                <span class="problema-tipo">{{ abastecimento.volume }} L · R$ {{ abastecimento.valorTotal.toFixed(2) }}</span>
+                <span class="problema-data">{{ abastecimento.km }} km · {{ formatarData(abastecimento.dataHora) }}</span>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="mensagem-vazio">Nenhum abastecimento registrado para este veículo.</p>
+
+          <div class="campo">
+            <label>Volume (litros abastecidos)</label>
+            <input type="number" min="0" step="0.01" v-model="volumeInput" />
+          </div>
+
+          <div class="campo">
+            <label>Valor total do abastecimento (R$)</label>
+            <input type="number" min="0" step="0.01" v-model="valorTotalInput" />
+          </div>
+
+          <div class="campo">
+            <label>KM em que o abastecimento foi efetuado</label>
+            <input type="number" min="0" v-model="kmAbastecimentoInput" />
+          </div>
+
+          <div class="campo">
+            <label>Data e Hora do abastecimento</label>
+            <input type="datetime-local" v-model="dataHoraAbastecimentoInput" />
           </div>
 
           <div class="linha-acao">
-            <input type="number" min="0" max="100" v-model="combustivelInput" />
-            <button type="button" class="botao-secundario" @click="salvarCombustivel">Atualizar</button>
+            <button type="button" class="botao-secundario" @click="registrarAbastecimento">Registrar abastecimento</button>
           </div>
         </div>
 
@@ -104,7 +126,7 @@
 </template>
 
 <script>
-import { getVeiculos, salvarVeiculos, getViagens, getAlertas, salvarAlertas } from '../services/dados'
+import { getVeiculos, salvarVeiculos, getViagens, getAlertas, salvarAlertas, getAbastecimentos, salvarAbastecimentos } from '../services/dados'
 
 export default {
   name: 'TelaQualidadeVeiculo',
@@ -114,10 +136,14 @@ export default {
       veiculos: [],
       viagens: [],
       alertas: [],
+      abastecimentos: [],
       busca: '',
       mostrarSugestoes: false,
       veiculoSelecionado: null,
-      combustivelInput: '',
+      volumeInput: '',
+      valorTotalInput: '',
+      kmAbastecimentoInput: '',
+      dataHoraAbastecimentoInput: '',
       novoTipoProblema: 'Troca de óleo',
       tiposProblema: ['Troca de óleo', 'Pastilhas de freio', 'Revisão geral', 'Outro'],
     }
@@ -149,6 +175,14 @@ export default {
         .sort((a, b) => new Date(b.data) - new Date(a.data))
     },
 
+    abastecimentosVeiculo() {
+      if (!this.veiculoSelecionado) return []
+      return this.abastecimentos
+        .filter(a => a.veiculoPlaca === this.veiculoSelecionado.placa)
+        .slice()
+        .sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
+    },
+
     temProblemasPendentes() {
       return this.alertasVeiculo.some(a => a.status === 'Pendente')
     },
@@ -174,6 +208,7 @@ export default {
       this.veiculos = getVeiculos()
       this.viagens = getViagens()
       this.alertas = getAlertas()
+      this.abastecimentos = getAbastecimentos()
     },
 
     fecharSugestoes() {
@@ -184,7 +219,10 @@ export default {
       this.veiculoSelecionado = veiculo
       this.busca = `${veiculo.modelo} - ${veiculo.placa}`
       this.mostrarSugestoes = false
-      this.combustivelInput = veiculo.combustivel ?? 100
+      this.volumeInput = ''
+      this.valorTotalInput = ''
+      this.kmAbastecimentoInput = ''
+      this.dataHoraAbastecimentoInput = ''
     },
 
     classeStatus(status) {
@@ -198,16 +236,55 @@ export default {
       return new Date(valor).toLocaleString('pt-BR')
     },
 
-    salvarCombustivel() {
-      const valor = Number(this.combustivelInput)
-      if (Number.isNaN(valor) || valor < 0 || valor > 100) {
-        alert('Informe um valor de combustível entre 0 e 100.')
+    registrarAbastecimento() {
+      const volume = Number(this.volumeInput)
+      const valorTotal = Number(this.valorTotalInput)
+      const km = Number(this.kmAbastecimentoInput)
+
+      if (Number.isNaN(volume) || volume <= 0) {
+        alert('Informe um volume de abastecimento válido.')
         return
       }
 
-      this.veiculoSelecionado.combustivel = valor
-      salvarVeiculos(this.veiculos)
-      alert(`Combustível do veículo ${this.veiculoSelecionado.placa} atualizado para ${valor}%.`)
+      if (Number.isNaN(valorTotal) || valorTotal <= 0) {
+        alert('Informe um valor total de abastecimento válido.')
+        return
+      }
+
+      if (Number.isNaN(km) || km < 0) {
+        alert('Informe o KM do abastecimento.')
+        return
+      }
+
+      if (!this.dataHoraAbastecimentoInput) {
+        alert('Informe a data e hora do abastecimento.')
+        return
+      }
+
+      const abastecimento = {
+        id: Date.now(),
+        veiculoPlaca: this.veiculoSelecionado.placa,
+        veiculoModelo: this.veiculoSelecionado.modelo,
+        volume,
+        valorTotal,
+        km,
+        dataHora: new Date(this.dataHoraAbastecimentoInput).toISOString(),
+      }
+
+      this.abastecimentos.push(abastecimento)
+      salvarAbastecimentos(this.abastecimentos)
+
+      if (km > (this.veiculoSelecionado.km ?? 0)) {
+        this.veiculoSelecionado.km = km
+        salvarVeiculos(this.veiculos)
+      }
+
+      this.volumeInput = ''
+      this.valorTotalInput = ''
+      this.kmAbastecimentoInput = ''
+      this.dataHoraAbastecimentoInput = ''
+
+      alert(`Abastecimento de ${volume} L registrado para o veículo ${abastecimento.veiculoPlaca}.`)
     },
 
     registrarProblema() {
@@ -271,6 +348,11 @@ export default {
   box-shadow: 0 0 120px rgba(0, 0, 0);
 }
 
+label {
+  font-size: 18px;
+}
+
+
 select {
   width: 100%;
   height: 36px;
@@ -315,32 +397,6 @@ select {
   margin: 0 0 12px 0;
   font-size: 22px;
   color: #333;
-}
-
-.gauge-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.gauge-fundo {
-  flex: 1;
-  height: 16px;
-  background: #cfcfcf;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.gauge-preenchido {
-  height: 100%;
-  background: rgb(13, 179, 13);
-  transition: width ease 0.3s;
-}
-
-.gauge-valor {
-  min-width: 44px;
-  font-weight: bold;
-  text-align: right;
 }
 
 .linha-acao {

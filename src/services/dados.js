@@ -7,6 +7,7 @@ const CHAVE_VEICULOS = 'veiculos'
 const CHAVE_MOTORISTAS = 'motoristas'
 const CHAVE_VIAGENS = 'viagens'
 const CHAVE_ALERTAS = 'alertas'
+const CHAVE_ABASTECIMENTOS = 'abastecimentos'
 
 function obter(chave) {
   const contexto = localStorage.getItem(chave)
@@ -49,9 +50,18 @@ export function salvarAlertas(alertas) {
   salvar(CHAVE_ALERTAS, alertas)
 }
 
+export function getAbastecimentos() {
+  return obter(CHAVE_ABASTECIMENTOS)
+}
+
+export function salvarAbastecimentos(abastecimentos) {
+  salvar(CHAVE_ABASTECIMENTOS, abastecimentos)
+}
+
 export function limparTodosOsDados() {
   localStorage.removeItem(CHAVE_VEICULOS)
   localStorage.removeItem(CHAVE_MOTORISTAS)
   localStorage.removeItem(CHAVE_VIAGENS)
   localStorage.removeItem(CHAVE_ALERTAS)
+  localStorage.removeItem(CHAVE_ABASTECIMENTOS)
 }
