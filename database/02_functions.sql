@@ -56,7 +56,8 @@ BEGIN
                 WHERE id_veiculo = NEW.id_veiculo
                   AND id_tipo_manutencao = v_tipo.id_tipo_manutencao
                   AND resolvido = FALSE
-            ) THEN
+            )
+             THEN
                 INSERT INTO alerta_manutencao (id_veiculo, id_tipo_manutencao, km_referencia)
                 VALUES (NEW.id_veiculo, v_tipo.id_tipo_manutencao, NEW.km_atual);
             END IF;

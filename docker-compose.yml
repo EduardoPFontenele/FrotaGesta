@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sales
+      POSTGRES_PASSWORD: "123"
+      POSTGRES_DB: frotagesta
+    ports:
+      # 5433 no host porque a máquina já tem um Postgres local ocupando a
+      # 5432. Internamente na rede Docker o backend continua falando com
+      # db:5432 normalmente (a porta abaixo só afeta acesso de fora, ex. um
+      # cliente SQL no host).
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 00_reset.sql fica de fora de propósito: ele dá TRUNCATE em tabelas que
+      # ainda não existem num banco recém-criado, o que quebraria o
+      # bootstrap do container. Ele é um script de reset manual para uso em
+      # desenvolvimento (psql, DBeaver etc.), não um script de inicialização.
+      # :z relabela os arquivos para o SELinux liberar a leitura dentro do
+      # container (necessário em distros como Fedora, que rodam com SELinux
+      # enforcing por padrão).
+      - ./database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro,z
+      - ./database/02_functions.sql:/docker-entrypoint-initdb.d/02_functions.sql:ro,z
+      - ./database/03_triggers.sql:/docker-entrypoint-initdb.d/03_triggers.sql:ro,z
+      - ./database/04_procedures.sql:/docker-entrypoint-initdb.d/04_procedures.sql:ro,z
+      - ./database/05_seed.sql:/docker-entrypoint-initdb.d/05_seed.sql:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sales -d frotagesta"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://sales:123@db:5432/frotagesta
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app:z
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app:z
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
